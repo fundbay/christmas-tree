@@ -1,0 +1,45 @@
+# .github/workflows/deploy.yml
+name: Deploy to GitHub Pages
+
+on:
+  # 在推送到 main/master 分支时触发部署
+  push:
+    branches:
+      - main
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      # 步骤 1: 检出代码
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          # 必须是完整历史，否则部署脚本可能失败
+          fetch-depth: 0
+
+      # 步骤 2: 安装 Node.js
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      # 步骤 3: 安装依赖
+      - name: Install dependencies
+        run: npm install
+
+      # 步骤 4: 构建项目（这一步会生成 /dist 或 /build 目录）
+      - name: Build project
+        run: npm run build
+
+      # 步骤 5: 部署到 GitHub Pages
+      - name: Deploy to Pages
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          # 部署脚本将使用 GitHub token 权限
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          # 部署 /dist 目录的内容 (这是 Vue/Vite 默认的构建目录)
+          publish_dir: ./dist
+          # 将部署内容推送到 gh-pages 分支
+          publish_branch: gh-pages

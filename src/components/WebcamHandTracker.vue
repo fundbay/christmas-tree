@@ -56,6 +56,7 @@ const emit = defineEmits<{
 // 2. 定义全局变量
 // ===================================
 
+const BASE_URL = import.meta.env.BASE_URL;
 const webcamVideo = ref<HTMLVideoElement | null>(null);
 const debugInfo = ref<HTMLElement | null>(null);
 let handLandmarker: HandLandmarker | null = null;
@@ -89,10 +90,12 @@ async function initMediaPipe() {
 
     try {
         // 2. 初始化 FilesetResolver 和 HandLandmarker
-        const vision = await FilesetResolver.forVisionTasks("/mediapipe/wasm");
+        const vision = await FilesetResolver.forVisionTasks(
+            `${BASE_URL}mediapipe/wasm`
+        );
         handLandmarker = await HandLandmarker.createFromOptions(vision, {
             baseOptions: {
-                modelAssetPath: "/mediapipe/models/hand_landmarker.task",
+                modelAssetPath: `${BASE_URL}mediapipe/models/hand_landmarker.task`,
                 delegate: props.delegate,
             },
             runningMode: "VIDEO",
