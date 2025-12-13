@@ -1,10 +1,10 @@
 <template>
-    <LoadingSpinner v-if="showLoader"></LoadingSpinner>
+    <LoadingSpinner v-if="showLoadingSpinner"></LoadingSpinner>
 
     <ChristmasTree
         :new-texture="latestTexture"
-        :interaction-state="appState"
         :hand-tracking-data="handTrackingData"
+        @tree-render-completed="handleTreeRenderCompleted"
     ></ChristmasTree>
 
     <div id="ui-layer">
@@ -17,7 +17,8 @@
                     <input
                         type="file"
                         webkitdirectory
-                        ref="folderInputRef"
+                        directory
+                        multiple
                         @change="handleImageUpload"
                     />
                 </label>
@@ -26,7 +27,8 @@
                     Select Files
                     <input
                         type="file"
-                        ref="fileInputRef"
+                        multiple
+                        accept="image/*"
                         @change="handleImageUpload"
                     />
                 </label>
@@ -59,21 +61,18 @@
 </template>
 
 <script lang="ts" setup>
-import { ref, reactive, onMounted, onBeforeUnmount } from "vue";
+import { ref, onMounted, onBeforeUnmount } from "vue";
 import LoadingSpinner from "../components/LoadingSpinner.vue";
 import ChristmasTree from "../components/ChristmasTree.vue";
 import NeteasePlayer from "../components/NeteasePlayer.vue";
 import WebcamHandTracker from "../components/WebcamHandTracker.vue";
 import * as THREE from "three";
 import type { HandTrackingData } from "../types/handTracking";
-import type { TreeState } from "../components/ChristmasTree.vue";
 
 /**
  * DOM 引用声明 (使用 ref)
  */
 // 声明文件上传相关变量
-const fileInputRef = ref<HTMLInputElement | null>(null);
-const folderInputRef = ref<HTMLInputElement | null>(null);
 const latestTexture = ref<THREE.Texture | null>(null);
 
 // 用于切换 class 的 UI 元素（虽然它们不是 input，但我们仍可通过 ref 访问）
@@ -89,9 +88,17 @@ const handTrackingData = ref<HandTrackingData>({
 });
 
 /**
- * 键盘按下处理函数
+ * Loading Spinner 控制器
+ * - true: 加载器存在并可见 (初始状态)
+ * - false: 加载器被移除
+ */
+const showLoadingSpinner = ref(true);
+
+/**
+ * 键盘按键处理函数
  */
 const handleKeydown = (e: KeyboardEvent) => {
+    /** 按 H 隐藏所有控件 */
     if (e.key.toLowerCase() === "h") {
         // 控制面板
         if (controlsWrapperRef.value) {
@@ -155,94 +162,13 @@ const handleImageUpload = (e: Event): void => {
 };
 
 /**
- * 应用程序状态类型和响应式状态
- */
-const appState = reactive<TreeState>({
-    mode: "SCATTER",
-    focusTarget: null, // 这个通常由 ChristmasTree 组件内部的 THREE.js 逻辑来管理
-    hand: {
-        detected: false,
-        x: 0,
-        y: 0,
-    },
-    rotation: {
-        x: 0,
-        y: 0,
-    },
-    particleSystem: [], // 粒子系统数据应该从 Tree 组件获取或管理
-});
-
-/**
- * 处理 WebcamHandTracker 手部追踪数据的函数
+ * 处理 WebcamHandTracker 组件回传手部追踪数据的函数
  */
 function handleHandData(data: HandTrackingData) {
     /**
      * 更新手部追踪数据状态
      */
     handTrackingData.value = data;
-    // if (!data.detected) {
-    //     // 未检测到手时，可以保持当前模式或恢复默认模式
-    //     return;
-    // }
-    // A. 更新手部位置和检测状态
-    // appState.hand.detected = data.detected;
-    // appState.hand.x = data.position.x;
-    // appState.hand.y = data.position.y;
-    // B. 根据比例数据判断手势模式 (原 processGestures 的逻辑)
-    // const { extensionRatio, pinchRatio } = data.ratios;
-    /**
-     * 逻辑说明：
-     * - 当 extensionRatio 小于 1.5 时，认为是握拳动作，切换到 TREE 模式。
-     * - 当 pinchRatio 小于 0.35 时，认为是捏合动作，切换到 FOCUS 模式，并随机选择一个粒子作为焦点。
-     * - 当 extensionRatio 大于 1.7 时，认为是张开手动作，切换到 SCATTER 模式。
-     * - 这些阈值可以根据实际测试进行调整，以获得更好的用户体验。
-     * - 切换模式时，确保只在模式变化时更新状态，避免重复触发。
-     * - focusTarget 的选择依赖于 ChristmasTree 组件暴露的粒子系统数据。
-     * - 这样设计可以让用户通过简单的手势自然地控制粒子系统的行为。
-     * - 注意：focusTarget 的具体实现需要确保 ChristmasTree 组件能够将粒子数据传递回来。
-     * - 这样可以实现更丰富的交互体验。
-     * - 该逻辑假设 appState.particleSystem 已经包含了粒子数据，并且每个粒子都有 type 和 mesh 属性。
-     * - 具体的粒子数据结构需要根据 ChristmasTree 组件的实现进行调整。
-     * - 该逻辑可以根据实际需求进行扩展，例如添加更多手势或调整现有手势的响应方式。
-     * - 通过这种方式，用户可以通过手势直观地与粒子系统进行交互，提升整体体验。
-     */
-    // 握拳 (TREE)：变成树 (阈值从 1.4 提高到 1.5，更容易触发)
-    // if (extensionRatio < 1.5) {
-    //     if (appState.mode !== "TREE") {
-    //         appState.mode = "TREE";
-    //         appState.focusTarget = null;
-    //     }
-    // }
-    // // 捏合 (FOCUS)：进入聚焦模式 (仅当没有握拳时才检查)
-    // else if (pinchRatio < 0.35) {
-    //     if (appState.mode !== "FOCUS") {
-    //         appState.mode = "FOCUS";
-    //         // 🚨 注意：这里需要依赖 ChristmasTree 暴露的粒子系统数据来随机选择 focusTarget
-    //         // 您需要确保 ChristmasTree.vue 能将粒子数据传回来。
-    //         if (!appState.particleSystem) return;
-    //         const photos = appState.particleSystem.filter(
-    //             (p: any) => p.type === "PHOTO"
-    //         );
-    //         if (photos.length) {
-    //             appState.focusTarget =
-    //                 photos[Math.floor(Math.random() * photos.length)]!.mesh;
-    //         }
-    //     }
-    // }
-    // // 张开 (SCATTER)：散开照片
-    // else if (extensionRatio > 1.7) {
-    //     if (appState.mode !== "SCATTER") {
-    //         appState.mode = "SCATTER";
-    //         appState.focusTarget = null;
-    //     }
-    // }
-    // console.log(
-    //     `Hand Gesture Detected - Mode: ${
-    //         appState.mode
-    //     }, ExtensionRatio: ${extensionRatio.toFixed(
-    //         2
-    //     )}, PinchRatio: ${pinchRatio.toFixed(2)}`
-    // );
 }
 
 /**
@@ -250,7 +176,6 @@ function handleHandData(data: HandTrackingData) {
  */
 function handleTrackerError(message: string) {
     console.error("Webcam Tracker Component Error:", message);
-    // 可以在这里显示一个用户友好的错误提示
 }
 
 /**
@@ -261,68 +186,29 @@ function handleTrackerReady() {
 }
 
 /**
- * Loading Spinner 控制器
- * - true: 加载器存在并可见 (初始状态)
- * - false: 加载器被移除
+ * 处理 ChristmasTree 组件渲染完成事件
  */
-const showLoader = ref(true);
-
-async function init() {
-    setTimeout(() => (showLoader.value = false), 800);
-}
+const handleTreeRenderCompleted = () => {
+    // showLoadingSpinner.value = false;
+    setTimeout(() => (showLoadingSpinner.value = false), 800);
+};
 
 onMounted(() => {
     /**
      * 绑定事件监听器
-     * - 文件/文件夹上传输入框绑定 change 事件，用于处理上传
-     * - 窗口绑定 keydown 事件，用于隐藏/显示 UI
      */
-    if (fileInputRef.value) {
-        fileInputRef.value.addEventListener("change", handleImageUpload);
-    }
 
-    if (folderInputRef.value) {
-        folderInputRef.value.addEventListener("change", handleImageUpload);
-    }
-
+    /** 窗口绑定 keydown 事件，用于隐藏/显示 UI */
     window.addEventListener("keydown", handleKeydown);
-
-    /**
-     * 初始化函数
-     */
-    init();
 });
 
 onBeforeUnmount(() => {
-    // 窗口事件解绑
+    /** 解绑窗口 keydown 事件 */
     window.removeEventListener("keydown", handleKeydown);
-
-    // 输入事件解绑
-    if (fileInputRef.value) {
-        fileInputRef.value.removeEventListener("change", handleImageUpload);
-    }
-
-    if (folderInputRef.value) {
-        folderInputRef.value.removeEventListener("change", handleImageUpload);
-    }
 });
 </script>
 
 <style scoped>
-/* 修改背景为深色渐变，不再是纯黑 */
-body {
-    margin: 0;
-    overflow: hidden;
-    background: radial-gradient(
-        circle at center,
-        #0f2027 0%,
-        #203a43 50%,
-        #2c5364 100%
-    );
-    background-color: #050d1a; /* Fallback */
-    font-family: "Times New Roman", serif;
-}
-
 /* UI Overlay */
 #ui-layer {
     position: absolute;
@@ -397,22 +283,6 @@ input[type="file"] {
 }
 
 /* 文字 */
-h1 {
-    color: #fceea7;
-    font-size: 56px;
-    margin: 0;
-    font-weight: 400;
-    letter-spacing: 6px;
-    text-shadow: 0 0 50px rgba(252, 238, 167, 0.6);
-    background: linear-gradient(to bottom, #fff, #eebb66);
-    background-clip: text;
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    font-family: "Cinzel", "Times New Roman", serif;
-    opacity: 0.9;
-    transition: opacity 0.5s ease;
-}
-
 .hint-text {
     color: rgba(212, 175, 55, 0.5);
     font-size: 9px;

@@ -2,6 +2,7 @@
  * 引入 CSS 样式
  */
 import "./assets/fonts.css";
+import "./style.css";
 
 /**
  * 引入 Vue 并创建 Vue 实例

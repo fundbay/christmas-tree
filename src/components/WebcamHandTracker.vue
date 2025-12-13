@@ -105,7 +105,7 @@ async function initMediaPipe() {
         try {
             if (debugInfo.value) {
                 debugInfo.value.innerText =
-                    "Attempting to load models from CDN...";
+                    "Attempting to load models from CDN. Wait a minute...";
             }
 
             // 尝试 1: 从 CDN 加载
@@ -128,7 +128,7 @@ async function initMediaPipe() {
 
             if (debugInfo.value) {
                 debugInfo.value.innerText =
-                    "CDN failed. Attempting local models...";
+                    "CDN failed. Attempting local models. Wait a minute...";
             }
 
             // 尝试 2: 从本地加载 (作为 Fallback)

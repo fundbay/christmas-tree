@@ -28,7 +28,6 @@ import type { HandTrackingData } from "../types/handTracking";
 
 const props = defineProps<{
     newTexture: THREE.Texture | null; // 接收父组件传入的新图片纹理
-    // interactionState: AppState | null; // 接收父组件的模式和手部数据
     handTrackingData: HandTrackingData | null; // 接收父组件传入的手势追踪数据
 }>();
 
@@ -39,7 +38,7 @@ const props = defineProps<{
 // ===================================================================================
 
 const emit = defineEmits<{
-    (e: "particle-system-update", system: any[]): void;
+    (e: "tree-render-completed"): void;
 }>();
 
 // ===================================================================================
@@ -1033,43 +1032,61 @@ function animate() {
  * @param texture - 包含用户图片数据的 THREE.Texture 实例。
  */
 const addPhotoToScene = (texture: THREE.Texture) => {
+    // 1. 初始化照片平面尺寸
+    let photoWidth = 1.2;
+    let photoHeight = 1.2;
+
+    /**
+     * 根据图片的宽高比调整照片尺寸
+     */
+    if (texture.image) {
+        // 使用局部变量 photoWidth 和 photoHeight
+        const image = texture.image as { width: number; height: number };
+        const aspect = image.width / image.height;
+        if (aspect > 1) {
+            photoHeight = photoWidth / aspect;
+        } else {
+            photoWidth = photoHeight * aspect;
+        }
+    }
+
+    // 2. 定义相框属性
+    const borderSize = 0.05; // 相框边框在照片周围的宽度
+    const frameThickness = 0.05; // 相框的厚度
+
+    // 3. 【关键：优化逻辑加入点】计算相框的整体尺寸 (照片尺寸 + 边框宽度)
+    const frameWidth = photoWidth + borderSize * 2;
+    const frameHeight = photoHeight + borderSize * 2;
+
     /**
      * 创建相框和照片网格
+     * 使用计算出的 frameWidth 和 frameHeight 创建相框的几何体
      */
-    const frameGeo = new THREE.BoxGeometry(1.4, 1.4, 0.05);
+    const frameGeo = new THREE.BoxGeometry(
+        frameWidth,
+        frameHeight,
+        frameThickness
+    ); // 使用计算值
     const frameMat = new THREE.MeshStandardMaterial({
         color: CONFIG.colors.champagneGold,
         metalness: 1.0,
         roughness: 0.1,
     });
     const frame = new THREE.Mesh(frameGeo, frameMat);
-
-    let width = 1.2;
-    let height = 1.2;
-
-    /**
-     * 根据图片的宽高比调整照片尺寸
-     */
-    if (texture.image) {
-        const image = texture.image as { width: number; height: number }; // 使用类型断言确保 image 具有 width 和 height 属性
-        const aspect = image.width / image.height;
-        if (aspect > 1) {
-            height = width / aspect;
-        } else {
-            width = height * aspect;
-        }
-    }
+    // frame.position.z 默认是 0
 
     /**
      * 创建照片平面
+     * 使用 photoWidth 和 photoHeight
      */
-    const photoGeo = new THREE.PlaneGeometry(width, height);
+    const photoGeo = new THREE.PlaneGeometry(photoWidth, photoHeight); // 使用计算值
     const photoMat = new THREE.MeshBasicMaterial({
         map: texture,
         side: THREE.DoubleSide,
     });
     const photo = new THREE.Mesh(photoGeo, photoMat);
-    photo.position.z = 0.04;
+    // 照片稍微向前突出一点，避免 Z-Fighting
+    photo.position.z = frameThickness / 2 + 0.001;
 
     /**
      * 组合相框和照片为一个 Group
@@ -1078,7 +1095,7 @@ const addPhotoToScene = (texture: THREE.Texture) => {
     group.add(frame);
     group.add(photo);
 
-    frame.scale.set(width / 1.2, height / 1.2, 1);
+    // 移除：frame.scale.set(...) 因为我们直接创建了正确尺寸的几何体
 
     const s = 0.8;
     group.scale.set(s, s, s);
@@ -1147,6 +1164,7 @@ const handleResize = () => {
 // ===================================================================================
 
 onMounted(() => {
+    /** 初始化场景及圣诞树的渲染 */
     initThree();
     createParticles();
     setupEnvironment();
@@ -1159,6 +1177,9 @@ onMounted(() => {
 
     /** 绑定窗口 Resize 事件（监听窗口尺寸变化并做处理） */
     window.addEventListener("resize", handleResize);
+
+    /** 通知父组件渲染初始化完成 */
+    emit("tree-render-completed");
 });
 
 onBeforeUnmount(() => {
