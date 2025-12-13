@@ -56,7 +56,6 @@ const emit = defineEmits<{
 // 2. 定义全局变量
 // ===================================
 
-const BASE_URL = import.meta.env.BASE_URL;
 const webcamVideo = ref<HTMLVideoElement | null>(null);
 const debugInfo = ref<HTMLElement | null>(null);
 let handLandmarker: HandLandmarker | null = null;
@@ -79,7 +78,18 @@ async function initMediaPipe() {
         debugInfo.value.innerText = "Loading MediaPipe models...";
     }
 
-    // 1. 设置摄像头参数
+    // 定义 WASM 与 MODEL 的 CDN 路径
+    const CDN_WASM_PATH =
+        "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@latest/wasm";
+    const CDN_MODEL_PATH =
+        "https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task";
+
+    // 定义 WASM 与 MODEL 的本地路径
+    const BASE_URL = import.meta.env.BASE_URL;
+    const LOCAL_WASM_PATH = `${BASE_URL}mediapipe/wasm`;
+    const LOCAL_MODEL_PATH = `${BASE_URL}mediapipe/models/hand_landmarker.task`;
+
+    // 设置摄像头参数
     const constraints: MediaStreamConstraints = {
         video: {
             width: { ideal: 640 },
@@ -89,32 +99,73 @@ async function initMediaPipe() {
     };
 
     try {
-        // 2. 初始化 FilesetResolver 和 HandLandmarker
-        const vision = await FilesetResolver.forVisionTasks(
-            `${BASE_URL}mediapipe/wasm`
-        );
-        handLandmarker = await HandLandmarker.createFromOptions(vision, {
-            baseOptions: {
-                modelAssetPath: `${BASE_URL}mediapipe/models/hand_landmarker.task`,
-                delegate: props.delegate,
-            },
-            runningMode: "VIDEO",
-            numHands: props.numHands,
-        });
+        let modelLoadedSuccessfully = false;
 
-        // 3. 获取视频流
-        const stream = await navigator.mediaDevices.getUserMedia(constraints);
-        video.srcObject = stream;
+        // 初始化 FilesetResolver 和 HandLandmarker
+        try {
+            if (debugInfo.value) {
+                debugInfo.value.innerText =
+                    "Attempting to load models from CDN...";
+            }
 
-        video.addEventListener("loadeddata", () => {
-            video.play();
-            // isReady = true;
-            emit("ready");
-            predictWebcam();
-        });
+            // 尝试 1: 从 CDN 加载
+            const vision = await FilesetResolver.forVisionTasks(CDN_WASM_PATH);
+            handLandmarker = await HandLandmarker.createFromOptions(vision, {
+                baseOptions: {
+                    modelAssetPath: CDN_MODEL_PATH,
+                    delegate: props.delegate,
+                },
+                runningMode: "VIDEO",
+                numHands: props.numHands,
+            });
+            modelLoadedSuccessfully = true;
+            console.log("MediaPipe models loaded successfully from CDN.");
+        } catch (cdnError) {
+            console.warn(
+                "CDN model loading failed, falling back to local files.",
+                cdnError
+            );
 
-        if (debugInfo.value) {
-            debugInfo.value.innerText = "Webcam active. Show hand.";
+            if (debugInfo.value) {
+                debugInfo.value.innerText =
+                    "CDN failed. Attempting local models...";
+            }
+
+            // 尝试 2: 从本地加载 (作为 Fallback)
+            const vision = await FilesetResolver.forVisionTasks(
+                LOCAL_WASM_PATH
+            );
+            handLandmarker = await HandLandmarker.createFromOptions(vision, {
+                baseOptions: {
+                    modelAssetPath: LOCAL_MODEL_PATH,
+                    delegate: props.delegate,
+                },
+                runningMode: "VIDEO",
+                numHands: props.numHands,
+            });
+            modelLoadedSuccessfully = true;
+            console.log(
+                "MediaPipe models loaded successfully from local files."
+            );
+        }
+
+        // 3. 确保只在模型加载成功时执行获取视频流
+        if (modelLoadedSuccessfully) {
+            const stream = await navigator.mediaDevices.getUserMedia(
+                constraints
+            );
+            video.srcObject = stream;
+
+            video.addEventListener("loadeddata", () => {
+                video.play();
+                // isReady = true;
+                emit("ready");
+                predictWebcam();
+            });
+
+            if (debugInfo.value) {
+                debugInfo.value.innerText = "Webcam active. Show hand.";
+            }
         }
     } catch (e) {
         const error = e as Error;
