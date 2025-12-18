@@ -11,11 +11,11 @@
         id="ui-layer"
         class="pointer-events-none absolute inset-0 z-10 flex flex-col items-center pt-10 transition-opacity duration-500 ease-out"
     >
-        <h1>Merry Christmas</h1>
+        <h1 class="text-center">Merry Christmas</h1>
 
         <div
             ref="controlsWrapperRef"
-            class="pointer-events-auto absolute right-8 top-8 z-20 flex flex-col items-end gap-2.5 transition-opacity duration-500 ease-out"
+            class="pointer-events-auto absolute right-8 top-8 z-20 hidden flex-col items-end gap-2.5 transition-opacity duration-500 ease-out lg:flex"
         >
             <div class="flex gap-2.5">
                 <label
@@ -51,9 +51,9 @@
                 Use "Select Folder" to load all photos at once
             </div>
             <div
-                class="mt-1 text-right text-[8px] uppercase tracking-[1px] text-[rgba(212,175,55,0.35)]"
+                class="mt-1.5 text-right text-[9px] uppercase tracking-[1px] text-[rgba(212,175,55,0.5)]"
             >
-                Or put photos in "./images/" (1.jpg - 30.jpg)
+                Or put photos in "./images/" Folder (Naming by 1.jpg - 30.jpg)
             </div>
             <div
                 class="mt-1.5 text-right text-[9px] uppercase tracking-[1px] text-[rgba(212,175,55,0.5)]"
@@ -66,7 +66,7 @@
     <!-- 音乐播放器 -->
     <div
         ref="MusicPlayerWrapperRef"
-        class="pointer-events-auto absolute bottom-8 right-8 z-20 transition-opacity duration-500 ease-out"
+        class="pointer-events-auto absolute bottom-8 right-8 z-20 hidden transition-opacity duration-500 ease-out lg:block"
     >
         <NeteasePlayer></NeteasePlayer>
     </div>
@@ -74,7 +74,7 @@
     <!-- Mediapipe 插件 -->
     <div
         ref="webcamWrapperRef"
-        class="pointer-events-none absolute bottom-8 left-8 z-50 h-[210px] w-[280px] overflow-hidden rounded border border-[rgba(212,175,55,0.5)] bg-black shadow-[0_0_20px_rgba(0,0,0,0.9)] transition-opacity duration-500 ease-out"
+        class="pointer-events-none absolute bottom-8 left-8 z-50 hidden h-[210px] w-[280px] overflow-hidden rounded border border-[rgba(212,175,55,0.5)] bg-black shadow-[0_0_20px_rgba(0,0,0,0.9)] transition-opacity duration-500 ease-out lg:block"
     >
         <WebcamHandTracker
             :debug-mode="true"
@@ -84,6 +84,29 @@
             @ready="handleTrackerReady"
         ></WebcamHandTracker>
     </div>
+
+    <!-- 移动端上传按钮 -->
+    <label
+        class="lg:hidden fixed bottom-4 right-4 z-30 flex h-12 w-12 cursor-pointer items-center justify-center rounded-full border border-[rgba(212,175,55,0.4)] bg-[rgba(20,20,20,0.75)] text-[#d4af37] shadow-lg backdrop-blur"
+        aria-label="Upload Images"
+    >
+        <svg
+            xmlns="http://www.w3.org/2000/svg"
+            viewBox="0 0 24 24"
+            class="h-6 w-6 fill-current"
+        >
+            <path
+                d="M12 3l4 4h-3v6h-2V7H8l4-4zm-7 15h14v2H5v-2z"
+            />
+        </svg>
+        <input
+            type="file"
+            class="hidden"
+            multiple
+            accept="image/*"
+            @change="handleImageUpload"
+        />
+    </label>
 </template>
 
 <script lang="ts" setup>
