@@ -5,7 +5,3 @@ import HomePage from './pages/HomePage.vue';
 <template>
   <HomePage></HomePage>
 </template>
-
-<style scoped>
-
-</style>

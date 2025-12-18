@@ -1,3 +1,4 @@
+@import "tailwindcss";
 /* 修改背景为深色渐变，不再是纯黑 */
 body {
     margin: 0;

@@ -7,15 +7,24 @@
         @tree-render-completed="handleTreeRenderCompleted"
     ></ChristmasTree>
 
-    <div id="ui-layer">
+    <div
+        id="ui-layer"
+        class="pointer-events-none absolute inset-0 z-10 flex flex-col items-center pt-10 transition-opacity duration-500 ease-out"
+    >
         <h1>Merry Christmas</h1>
 
-        <div ref="controlsWrapperRef" class="controls-wrapper">
-            <div class="btn-group">
-                <label class="upload-btn">
+        <div
+            ref="controlsWrapperRef"
+            class="pointer-events-auto absolute right-8 top-8 z-20 flex flex-col items-end gap-2.5 transition-opacity duration-500 ease-out"
+        >
+            <div class="flex gap-2.5">
+                <label
+                    class="group flex h-[38px] min-w-[120px] cursor-pointer items-center justify-center border border-[rgba(212,175,55,0.4)] bg-[rgba(20,20,20,0.6)] px-5 text-[10px] uppercase tracking-[2px] text-[#d4af37] transition duration-300 hover:bg-[#d4af37] hover:text-black hover:shadow-[0_0_20px_rgba(212,175,55,0.5)] backdrop-blur-sm"
+                >
                     Select Folder
                     <input
                         type="file"
+                        class="hidden"
                         webkitdirectory
                         directory
                         multiple
@@ -23,33 +32,50 @@
                     />
                 </label>
 
-                <label class="upload-btn">
+                <label
+                    class="group flex h-[38px] min-w-[120px] cursor-pointer items-center justify-center border border-[rgba(212,175,55,0.4)] bg-[rgba(20,20,20,0.6)] px-5 text-[10px] uppercase tracking-[2px] text-[#d4af37] transition duration-300 hover:bg-[#d4af37] hover:text-black hover:shadow-[0_0_20px_rgba(212,175,55,0.5)] backdrop-blur-sm"
+                >
                     Select Files
                     <input
                         type="file"
+                        class="hidden"
                         multiple
                         accept="image/*"
                         @change="handleImageUpload"
                     />
                 </label>
             </div>
-            <div class="hint-text">
+            <div
+                class="mt-1.5 text-right text-[9px] uppercase tracking-[1px] text-[rgba(212,175,55,0.5)]"
+            >
                 Use "Select Folder" to load all photos at once
             </div>
-            <div class="hint-text" style="opacity: 0.7; font-size: 8px">
+            <div
+                class="mt-1 text-right text-[8px] uppercase tracking-[1px] text-[rgba(212,175,55,0.35)]"
+            >
                 Or put photos in "./images/" (1.jpg - 30.jpg)
             </div>
-            <div class="hint-text">Press "H" to hide all the UIs</div>
+            <div
+                class="mt-1.5 text-right text-[9px] uppercase tracking-[1px] text-[rgba(212,175,55,0.5)]"
+            >
+                Press "H" to hide all the UIs
+            </div>
         </div>
     </div>
 
     <!-- 音乐播放器 -->
-    <div ref="MusicPlayerWrapperRef" class="music-player-wrapper">
+    <div
+        ref="MusicPlayerWrapperRef"
+        class="pointer-events-auto absolute bottom-8 right-8 z-20 transition-opacity duration-500 ease-out"
+    >
         <NeteasePlayer></NeteasePlayer>
     </div>
 
     <!-- Mediapipe 插件 -->
-    <div ref="webcamWrapperRef" class="webcam-wrapper">
+    <div
+        ref="webcamWrapperRef"
+        class="pointer-events-none absolute bottom-8 left-8 z-50 h-[210px] w-[280px] overflow-hidden rounded border border-[rgba(212,175,55,0.5)] bg-black shadow-[0_0_20px_rgba(0,0,0,0.9)] transition-opacity duration-500 ease-out"
+    >
         <WebcamHandTracker
             :debug-mode="true"
             delegate="GPU"
@@ -94,24 +120,27 @@ const handTrackingData = ref<HandTrackingData>({
  */
 const showLoadingSpinner = ref(true);
 
+const toggleUiVisibility = (
+    element: HTMLElement | null,
+    togglePointerEvents = true
+) => {
+    if (!element) return;
+    element.classList.toggle("opacity-0");
+    if (togglePointerEvents) {
+        element.classList.toggle("pointer-events-none");
+        element.classList.toggle("pointer-events-auto");
+    }
+};
+
 /**
  * 键盘按键处理函数
  */
 const handleKeydown = (e: KeyboardEvent) => {
     /** 按 H 隐藏所有控件 */
     if (e.key.toLowerCase() === "h") {
-        // 控制面板
-        if (controlsWrapperRef.value) {
-            controlsWrapperRef.value.classList.toggle("ui-hidden");
-        }
-        // 摄像头
-        if (webcamWrapperRef.value) {
-            webcamWrapperRef.value.classList.toggle("ui-hidden");
-        }
-        // 音乐播放器
-        if (MusicPlayerWrapperRef.value) {
-            MusicPlayerWrapperRef.value.classList.toggle("ui-hidden");
-        }
+        toggleUiVisibility(controlsWrapperRef.value, true);
+        toggleUiVisibility(webcamWrapperRef.value, false);
+        toggleUiVisibility(MusicPlayerWrapperRef.value, true);
     }
 };
 
@@ -207,115 +236,3 @@ onBeforeUnmount(() => {
     window.removeEventListener("keydown", handleKeydown);
 });
 </script>
-
-<style scoped>
-/* UI Overlay */
-#ui-layer {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    z-index: 10;
-    pointer-events: none;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    padding-top: 40px;
-    box-sizing: border-box;
-    transition: opacity 0.5s ease;
-}
-
-.ui-hidden {
-    opacity: 0 !important;
-    pointer-events: none !important;
-}
-
-/* Controls */
-.controls-wrapper {
-    position: absolute;
-    top: 30px;
-    right: 30px;
-    pointer-events: auto;
-    display: flex;
-    flex-direction: column;
-    align-items: flex-end;
-    gap: 10px;
-    z-index: 20;
-    transition: opacity 0.5s ease;
-}
-
-/* 上传按钮 */
-.btn-group {
-    display: flex;
-    gap: 10px;
-}
-
-/* 统一按钮样式: Select Folder/Files */
-.upload-btn {
-    background: rgba(20, 20, 20, 0.6);
-    border: 1px solid rgba(212, 175, 55, 0.4);
-    color: #d4af37;
-    padding: 10px 20px;
-    cursor: pointer;
-    text-transform: uppercase;
-    letter-spacing: 2px;
-    font-size: 10px;
-    transition: all 0.4s;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    backdrop-filter: blur(5px);
-    min-width: 120px;
-    height: 38px;
-    box-sizing: border-box;
-    line-height: 1.2;
-}
-
-.upload-btn:hover {
-    background: #d4af37;
-    color: #000;
-    box-shadow: 0 0 20px rgba(212, 175, 55, 0.5);
-}
-
-input[type="file"] {
-    display: none;
-}
-
-/* 文字 */
-.hint-text {
-    color: rgba(212, 175, 55, 0.5);
-    font-size: 9px;
-    letter-spacing: 1px;
-    text-transform: uppercase;
-    text-align: right;
-    margin-top: 5px;
-}
-
-/* 网易云音乐 iframe 播放器样式 */
-.music-player-wrapper {
-    position: absolute;
-    bottom: 30px;
-    right: 30px;
-    pointer-events: auto;
-    z-index: 20;
-    transition: opacity 0.5s ease;
-}
-
-.webcam-wrapper {
-    position: absolute;
-    bottom: 30px;
-    left: 30px;
-    width: 280px;
-    height: 210px;
-    border: 1px solid rgba(212, 175, 55, 0.5);
-    box-shadow: 0 0 20px rgba(0, 0, 0, 0.9);
-    border-radius: 4px;
-    overflow: hidden;
-    opacity: 1;
-    pointer-events: none;
-    z-index: 50;
-    background: #000;
-    transition: opacity 0.5s ease;
-}
-</style>

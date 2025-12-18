@@ -26,5 +26,3 @@ const props = defineProps<{
     iframeAllow?: string;
 }>();
 </script>
-
-<style scoped></style>
