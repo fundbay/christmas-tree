@@ -16,6 +16,15 @@ export const TREE_CONFIG = {
         treeHeight: 24,
         treeRadius: 8,
     },
+    performance: {
+        responsiveParticles: true,
+        smallDeviceWidth: 768,
+        particleScale: {
+            ornaments: 0.6,
+            dust: 0.5,
+            snow: 0.7,
+        },
+    },
     camera: { z: 50 },
     preload: {
         autoScanLocal: true,

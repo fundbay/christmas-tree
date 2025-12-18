@@ -30,7 +30,10 @@ export class OrnamentSystem {
 
     /** 根据配置随机生成基础装饰物和顶部星星 */
     populateBaseDecorations() {
-        const total = this.config.particles.count;
+        const total = this.getResponsiveParticleCount(
+            this.config.particles.count,
+            "ornaments"
+        );
         for (let i = 0; i < total; i++) {
             const type = this.pickRandomType();
             const mesh = this.factory.create(type);
@@ -186,7 +189,11 @@ export class OrnamentSystem {
             opacity: 0.8,
         });
 
-        for (let i = 0; i < this.config.particles.dustCount; i++) {
+        const total = this.getResponsiveParticleCount(
+            this.config.particles.dustCount,
+            "dust"
+        );
+        for (let i = 0; i < total; i++) {
             const mesh = new THREE.Mesh(geo, mat);
             mesh.scale.setScalar(0.5 + Math.random());
             this.core.mainGroup.add(mesh);
@@ -219,5 +226,17 @@ export class OrnamentSystem {
             const angle = normalizedH * Math.PI * 2 * loops + Math.PI / 4;
             p.setTreePosition(Math.cos(angle) * r, y, Math.sin(angle) * r);
         });
+    }
+
+    private getResponsiveParticleCount(
+        base: number,
+        type: keyof TreeConfig["performance"]["particleScale"]
+    ) {
+        const perf = this.config.performance;
+        if (!perf?.responsiveParticles) return base;
+        if (typeof window === "undefined") return base;
+        if (window.innerWidth >= perf.smallDeviceWidth) return base;
+        const scale = perf.particleScale?.[type] ?? 1;
+        return Math.max(1, Math.floor(base * scale));
     }
 }

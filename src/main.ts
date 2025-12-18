@@ -7,6 +7,14 @@ import "./style.css";
 /**
  * 引入 Vue 并创建 Vue 实例
  */
-import { createApp } from "vue";
-import App from "./App.vue";
-createApp(App).mount("#app");
+import { createApp, defineAsyncComponent } from "vue";
+import LoadingSpinner from "./components/LoadingSpinner.vue";
+
+const AsyncApp = defineAsyncComponent({
+    loader: () => import("./App.vue"),
+    loadingComponent: LoadingSpinner,
+    delay: 0,
+    suspensible: false,
+});
+
+createApp(AsyncApp).mount("#app");

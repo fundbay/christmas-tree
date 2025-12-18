@@ -32,7 +32,9 @@ export class SnowSystem {
 
     /** 构建片状雪花网格，并添加到场景 */
     create() {
-        const count = this.config.particles.snowCount;
+        const count = this.getResponsiveParticleCount(
+            this.config.particles.snowCount
+        );
         const geometry = this.createSnowflakeGeometry();
         const material = new THREE.MeshStandardMaterial({
             color: 0xffffff,
@@ -177,5 +179,14 @@ export class SnowSystem {
             THREE.MathUtils.randFloat(yMin, yMax),
             -(zStart + Math.random() * zRange)
         );
+    }
+
+    private getResponsiveParticleCount(base: number) {
+        const perf = this.config.performance;
+        if (!perf?.responsiveParticles) return base;
+        if (typeof window === "undefined") return base;
+        if (window.innerWidth >= perf.smallDeviceWidth) return base;
+        const scale = perf.particleScale?.snow ?? 1;
+        return Math.max(1, Math.floor(base * scale));
     }
 }

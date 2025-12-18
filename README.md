@@ -14,6 +14,7 @@
 - **手势控制**：握拳 → 圣诞树模式、张开 → 星球模式、捏合手指 → 放大图片，随心所欲。
 - **网易云背景音乐**：`NeteasePlayer` 组件可替换为自定义背景音乐。
 - **Tailwind UI + 响应式**：所有组件集成 TailwindCSS；手机/平板自动隐藏面板，仅保留上传按钮；桌面端可按 `H` 显隐 UI。
+- **响应式粒子调度**：`src/three/config/treeConfig.ts` 新增 `performance` 配置项，可在 `window.innerWidth < 768` 时自动降低雪花、装饰物、尘埃数量，也可自行调整倍率。
 - **单文件导出**：`npm run build:single` 生成离线可用的 `index.html`。
 
 ---
@@ -85,6 +86,7 @@ npm run build:single
 - **手机 / 平板**：自动隐藏控制面板、摄像头预览和音乐播放器，仅保留圆形上传按钮，避免 overflow。
 - **桌面**：完整 UI 可见，并可按 `H` 键快速切换。
 - **标题字体**：自适应大小，确保 “Merry Christmas” 始终单行居中显示。
+- **粒子数量**：通过 `treeConfig.performance.particleScale` 为不同粒子设置缩放因子，系统会在小屏设备上套用以保障帧率。
 
 ---
 
