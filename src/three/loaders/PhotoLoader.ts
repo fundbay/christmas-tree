@@ -49,6 +49,25 @@ export class PhotoLoader {
         }
     }
 
+    /**
+     * ????????????????????
+     */
+    load(preloadImages?: string[]) {
+        if (preloadImages && preloadImages.length > 0) {
+            preloadImages.forEach((url) => {
+                this.loader.load(
+                    url,
+                    (texture) => this.handleTexture(texture),
+                    undefined,
+                    (error) => console.error("Texture load error", error)
+                );
+            });
+            return;
+        }
+
+        this.loadPreconfigured();
+    }
+
     private handleTexture(texture: THREE.Texture) {
         texture.colorSpace = THREE.SRGBColorSpace;
         this.options.onTexture(texture);

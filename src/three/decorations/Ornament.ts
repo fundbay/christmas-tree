@@ -64,29 +64,20 @@ export class Ornament {
         const { mode, focusTarget, clock, core } = context;
         let target = this.posTree;
 
-        if (mode === "SCATTER") {
+        if (mode === "SCATTER" || mode === "FOCUS") {
             target = this.posScatter;
-        } else if (mode === "FOCUS") {
-            if (this.mesh === focusTarget) {
-                const desiredWorldPos = new THREE.Vector3(0, 2, 35);
-                const invMatrix = new THREE.Matrix4()
-                    .copy(core.mainGroup.matrixWorld)
-                    .invert();
-                target = desiredWorldPos.applyMatrix4(invMatrix);
-            } else {
-                target = this.posScatter;
-            }
+        } else {
+            target = this.posTree;
         }
 
-        const lerpSpeed =
-            mode === "FOCUS" && this.mesh === focusTarget ? 5.0 : 2.0;
+        const lerpSpeed = mode === "TREE" ? 3.0 : 2.0;
         this.mesh.position.lerp(target, lerpSpeed * dt);
 
-        if (mode === "SCATTER") {
+        if (mode === "SCATTER" || (mode === "FOCUS" && this.mesh !== focusTarget)) {
             this.mesh.rotation.x += this.spinSpeed.x * dt;
             this.mesh.rotation.y += this.spinSpeed.y * dt;
             this.mesh.rotation.z += this.spinSpeed.z * dt;
-        } else if (mode === "TREE") {
+        } else if (mode === "TREE" || mode === "FOCUS") {
             if (this.type === "PHOTO") {
                 this.mesh.lookAt(0, this.mesh.position.y, 0);
                 this.mesh.rotateY(Math.PI);
@@ -115,11 +106,8 @@ export class Ornament {
                 this.baseScale *
                 (0.8 + 0.4 * Math.sin(clock.elapsedTime * 4 + this.mesh.id));
             if (mode === "TREE") scale = 0;
-        } else if (mode === "SCATTER" && this.type === "PHOTO") {
+        } else if (mode !== "TREE" && this.type === "PHOTO") {
             scale = this.baseScale * 2.5;
-        } else if (mode === "FOCUS") {
-            scale =
-                this.mesh === focusTarget ? this.baseScale * 4.5 : this.baseScale * 0.8;
         }
 
         this.mesh.scale.lerp(new THREE.Vector3(scale, scale, scale), 4 * dt);

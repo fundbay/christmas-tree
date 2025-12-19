@@ -7,13 +7,12 @@
 
 <script setup lang="ts">
 import { ref, watch, onMounted, onBeforeUnmount, onUnmounted } from "vue";
-import * as THREE from "three";
 import type { HandTrackingData } from "../mediapipe/types";
 import { TreeExperience } from "../three/core/TreeExperience";
 
 const props = defineProps<{
-    newTexture: THREE.Texture | null;
     handTrackingData: HandTrackingData | null;
+    preloadImages?: string[] | null;
 }>();
 
 const emit = defineEmits<{
@@ -22,18 +21,7 @@ const emit = defineEmits<{
 
 const threeContainer = ref<HTMLDivElement | null>(null);
 let experience: TreeExperience | null = null;
-
-// 当父组件传入新的照片纹理时，将纹理交给三维体验实例生成新的装饰物
-watch(
-    () => props.newTexture,
-    (texture) => {
-        if (texture && experience) {
-            experience.addPhotoTexture(texture);
-        }
-    }
-);
-
-// 将最新的手势识别数据推送到三维体验实例，用于驱动模式切换/旋转
+// Push hand tracking data into the experience for mode switching.
 watch(
     () => props.handTrackingData,
     (data) => {
@@ -46,7 +34,7 @@ watch(
 const initExperience = () => {
     if (!threeContainer.value) return;
     experience = new TreeExperience(threeContainer.value);
-    experience.mount();
+    experience.mount(props.preloadImages ?? undefined);
     if (props.handTrackingData) {
         experience.setHandTrackingData(props.handTrackingData);
     }

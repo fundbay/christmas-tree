@@ -2,8 +2,9 @@
     <LoadingSpinner v-if="showLoadingSpinner"></LoadingSpinner>
 
     <ChristmasTree
-        :new-texture="latestTexture"
         :hand-tracking-data="handTrackingData"
+        :preload-images="uploadedImages"
+        :key="treeSeed"
         @tree-render-completed="handleTreeRenderCompleted"
     ></ChristmasTree>
 
@@ -115,15 +116,12 @@ import LoadingSpinner from "../components/LoadingSpinner.vue";
 import ChristmasTree from "../components/ChristmasTree.vue";
 import NeteasePlayer from "../components/NeteasePlayer.vue";
 import WebcamHandTracker from "../components/WebcamHandTracker.vue";
-import * as THREE from "three";
 import type { HandTrackingData } from "../types/handTracking";
 
 /**
  * DOM 引用声明 (使用 ref)
  */
 // 声明文件上传相关变量
-const latestTexture = ref<THREE.Texture | null>(null);
-
 // 用于切换 class 的 UI 元素（虽然它们不是 input，但我们仍可通过 ref 访问）
 const controlsWrapperRef = ref<HTMLElement | null>(null);
 const webcamWrapperRef = ref<HTMLElement | null>(null);
@@ -142,6 +140,9 @@ const handTrackingData = ref<HandTrackingData>({
  * - false: 加载器被移除
  */
 const showLoadingSpinner = ref(true);
+
+const uploadedImages = ref<string[] | null>(null);
+const treeSeed = ref(0);
 
 const toggleUiVisibility = (
     element: HTMLElement | null,
@@ -170,47 +171,39 @@ const handleKeydown = (e: KeyboardEvent) => {
 /**
  * 上传照片处理函数
  */
-const handleImageUpload = (e: Event): void => {
-    /**
-     * 断言 e.target 是一个 HTMLInputElement，它有 files 属性
-     */
-    const inputElement = e.target as HTMLInputElement | null;
+const readFileAsDataUrl = (file: File) =>
+    new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => {
+            if (typeof reader.result === "string") {
+                resolve(reader.result);
+            } else {
+                reject(new Error("Invalid file result"));
+            }
+        };
+        reader.onerror = () => reject(reader.error ?? new Error("Read error"));
+        reader.readAsDataURL(file);
+    });
 
-    /**
-     * 运行时检查和类型守卫
-     */
+const handleImageUpload = async (e: Event): Promise<void> => {
+    const inputElement = e.target as HTMLInputElement | null;
     if (!inputElement || !inputElement.files) return;
 
-    // files 是 FileList 类型
-    const files = inputElement.files;
-    if (files.length === 0) return;
+    const files = Array.from(inputElement.files).filter((f) =>
+        f.type.startsWith("image/")
+    );
+    if (files.length == 0) return;
 
-    Array.from(files).forEach((f: File) => {
-        /**
-         * 检查文件类型
-         */
-        if (!f.type.startsWith("image/")) return;
-
-        /**
-         * 读取文件
-         */
-        const reader = new FileReader();
-        reader.onload = (ev: ProgressEvent<FileReader>) => {
-            /** 确保 result 存在且是字符串 (Data URL) */
-            const result = ev.target?.result;
-            if (typeof result !== "string") return;
-
-            /** 使用 TextureLoader 加载纹理 */
-            new THREE.TextureLoader().load(result, (t: THREE.Texture) => {
-                t.colorSpace = THREE.SRGBColorSpace;
-                /** 更新状态，通知子组件 */
-                latestTexture.value = t;
-                /** 重要：为了能够连续上传，这里可以重置输入框，触发下一次 change 事件 */
-                inputElement.value = "";
-            });
-        };
-        reader.readAsDataURL(f);
-    });
+    showLoadingSpinner.value = true;
+    try {
+        const urls = await Promise.all(files.map(readFileAsDataUrl));
+        uploadedImages.value = urls;
+        treeSeed.value += 1;
+    } catch (error) {
+        console.error("Upload image error:", error);
+    } finally {
+        inputElement.value = "";
+    }
 };
 
 /**

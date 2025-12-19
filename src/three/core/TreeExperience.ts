@@ -9,15 +9,17 @@ import { PhotoLoader } from "../loaders/PhotoLoader";
 import { PostProcessingPipeline } from "./PostProcessing";
 import { EffectComposer } from "three/addons/postprocessing/EffectComposer.js";
 
-/**
- * TreeExperience 负责调度场景、装饰物、手势等所有子系统
- */
 export class TreeExperience {
     private readonly sceneManager: SceneManager;
     private environmentManager: EnvironmentManager | null;
     private ornamentSystem: OrnamentSystem | null;
     private snowSystem: SnowSystem | null;
     private composer: EffectComposer | null;
+    private baseCameraPos: THREE.Vector3 | null;
+    private readonly baseLookAt: THREE.Vector3;
+    private readonly focusTargetWorld: THREE.Vector3;
+    private readonly focusDirection: THREE.Vector3;
+    private readonly focusCameraPos: THREE.Vector3;
     private readonly clock: THREE.Clock;
     private animationId: number | null;
     private readonly resizeHandler: () => void;
@@ -31,6 +33,11 @@ export class TreeExperience {
         this.ornamentSystem = null;
         this.snowSystem = null;
         this.composer = null;
+        this.baseCameraPos = null;
+        this.baseLookAt = new THREE.Vector3(0, 0, 0);
+        this.focusTargetWorld = new THREE.Vector3();
+        this.focusDirection = new THREE.Vector3();
+        this.focusCameraPos = new THREE.Vector3();
         this.clock = new THREE.Clock();
         this.animationId = null;
         this.resizeHandler = () => this.handleResize();
@@ -43,11 +50,9 @@ export class TreeExperience {
         };
     }
 
-    /**
-     * 初始化并挂载整棵圣诞树，包括环境、装饰与后期
-     */
-    mount() {
+    mount(preloadImages?: string[]) {
         const core = this.sceneManager.init(this.container);
+        this.baseCameraPos = core.camera.position.clone();
         this.environmentManager = new EnvironmentManager(core);
         this.environmentManager.applyEnvironment();
         this.environmentManager.setupLights();
@@ -58,7 +63,7 @@ export class TreeExperience {
         const photoLoader = new PhotoLoader({
             onTexture: (texture) => this.ornamentSystem?.addPhoto(texture),
         });
-        photoLoader.loadPreconfigured();
+        photoLoader.load(preloadImages);
 
         this.snowSystem = new SnowSystem(core.scene);
         this.snowSystem.create();
@@ -70,9 +75,6 @@ export class TreeExperience {
         this.animate();
     }
 
-    /**
-     * 将 MediaPipe 返回的手势数据喂入状态机，驱动模式切换
-     */
     setHandTrackingData(data: HandTrackingData | null) {
         if (!data) {
             this.state.hand.detected = false;
@@ -93,10 +95,14 @@ export class TreeExperience {
 
         const { extensionRatio, pinchRatio } = data.ratios;
         if (extensionRatio < 1.5) {
-            this.state.mode = "TREE";
+            if (this.state.mode === "FOCUS") {
+                this.state.mode = "SCATTER";
+            } else {
+                this.state.mode = "TREE";
+            }
             this.state.focusTarget = null;
         } else if (pinchRatio < 0.35) {
-            if (this.state.mode !== "FOCUS") {
+            if (this.state.mode === "SCATTER") {
                 this.state.mode = "FOCUS";
                 this.state.focusTarget =
                     this.ornamentSystem?.getRandomPhotoMesh() ?? null;
@@ -107,16 +113,10 @@ export class TreeExperience {
         }
     }
 
-    /**
-     * 向装饰系统追加新的相框贴图
-     */
     addPhotoTexture(texture: THREE.Texture) {
         this.ornamentSystem?.addPhoto(texture);
     }
 
-    /**
-     * 清理渲染循环和所有子系统
-     */
     destroy() {
         if (this.animationId !== null) {
             cancelAnimationFrame(this.animationId);
@@ -132,9 +132,6 @@ export class TreeExperience {
         this.sceneManager.dispose();
     }
 
-    /**
-     * 渲染主循环：更新旋转、粒子、雪花并触发后期
-     */
     private animate = () => {
         this.animationId = requestAnimationFrame(this.animate);
         const core = this.getCore();
@@ -143,15 +140,14 @@ export class TreeExperience {
         const dt = this.clock.getDelta();
         this.updateRotation(dt);
 
+        this.updateCameraFocus(dt);
+
         core.mainGroup.updateWorldMatrix(true, false);
         this.ornamentSystem.update(this.state, dt);
         this.snowSystem?.update(this.clock);
         this.composer.render();
     };
 
-    /**
-     * 根据当前模式与手势插值 mainGroup 的旋转
-     */
     private updateRotation(dt: number) {
         if (this.state.mode === "SCATTER" && this.state.hand.detected) {
             const targetRotY = this.state.hand.x * Math.PI * 0.9;
@@ -175,7 +171,34 @@ export class TreeExperience {
     }
 
     /**
-     * 处理窗口缩放，保持后期和渲染器尺寸一致
+     * Smooth camera focus when entering/leaving FOCUS mode.
+     */
+    private updateCameraFocus(dt: number) {
+        const core = this.getCore();
+        if (!this.baseCameraPos) return;
+
+        if (this.state.mode === "FOCUS" && this.state.focusTarget) {
+            this.state.focusTarget.getWorldPosition(this.focusTargetWorld);
+            this.focusDirection
+                .subVectors(core.camera.position, this.focusTargetWorld)
+                .normalize();
+            if (this.focusDirection.lengthSq() < 1e-6) {
+                this.focusDirection.set(0, 0, 1);
+            }
+            this.focusCameraPos
+                .copy(this.focusTargetWorld)
+                .addScaledVector(this.focusDirection, 6);
+            core.camera.position.lerp(this.focusCameraPos, 3.0 * dt);
+            core.camera.lookAt(this.focusTargetWorld);
+            return;
+        }
+
+        core.camera.position.lerp(this.baseCameraPos, 2.0 * dt);
+        core.camera.lookAt(this.baseLookAt);
+    }
+
+    /**
+     * Handle resize for camera and composer.
      */
     private handleResize() {
         this.sceneManager.resize();
@@ -187,3 +210,4 @@ export class TreeExperience {
         return this.sceneManager.core;
     }
 }
+
